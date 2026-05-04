@@ -1,2 +1,1 @@
-# scm-tracker
-Classroom management app
+scm tracker
