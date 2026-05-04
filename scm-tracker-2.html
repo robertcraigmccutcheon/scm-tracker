@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>SCM Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+:root{
+  --bg:#0d1117;--surface:#161b22;--card:#1c2128;--border:#30363d;
+  --accent:#3fb950;--warn:#d29922;--danger:#f85149;--blue:#58a6ff;
+  --purple:#bc8cff;--orange:#f0883e;
+  --text:#e6edf3;--muted:#7d8590;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;min-height:100vh;}
+#app{max-width:560px;margin:0 auto;padding:16px 16px 100px;}
+
+/* ── Typography ── */
+.fw7{font-weight:700;}.tsm{font-size:12px;}.txs{font-size:11px;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.cm{color:var(--muted);}.ca{color:var(--accent);}.cd{color:var(--danger);}.cb{color:var(--blue);}.cw{color:var(--warn);}
+
+/* ── Layout ── */
+.row{display:flex;align-items:center;}
+.rowb{display:flex;align-items:center;justify-content:space-between;}
+.col{display:flex;flex-direction:column;}
+.g4{gap:4px;}.g6{gap:6px;}.g8{gap:8px;}.g10{gap:10px;}.g12{gap:12px;}
+.wrap{flex-wrap:wrap;}
+.mt8{margin-top:8px;}.mt12{margin-top:12px;}.mt16{margin-top:16px;}
+.mb8{margin-bottom:8px;}.mb12{margin-bottom:12px;}.mb16{margin-bottom:16px;}.mb20{margin-bottom:20px;}
+.w100{width:100%;}
+
+/* ── Header ── */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.logo{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:16px;letter-spacing:-.5px;}
+.logo-dot{color:var(--accent);}
+.header-actions{display:flex;gap:8px;align-items:center;}
+
+/* ── Buttons ── */
+.btn{border:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;border-radius:8px;padding:8px 16px;transition:all .15s;display:inline-flex;align-items:center;gap:6px;text-decoration:none;}
+.btn-accent{background:var(--accent);color:#0d1117;}.btn-accent:hover{background:#4fc162;}
+.btn-surface{background:var(--surface);color:var(--text);border:1px solid var(--border);}.btn-surface:hover{border-color:var(--muted);}
+.btn-danger{background:rgba(248,81,73,.12);color:var(--danger);border:1px solid rgba(248,81,73,.25);}
+.btn-ghost{background:transparent;color:var(--muted);padding:6px 10px;}.btn-ghost:hover{color:var(--text);}
+.btn-export{background:rgba(88,166,255,.1);color:var(--blue);border:1px solid rgba(88,166,255,.25);}
+.btn-green{background:rgba(63,185,80,.12);color:var(--accent);border:1px solid rgba(63,185,80,.25);}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-icon{padding:8px;border-radius:50%;min-width:40px;min-height:40px;justify-content:center;}
+
+/* ── Tags ── */
+.tag{display:inline-flex;align-items:center;border-radius:20px;font-size:10px;font-weight:700;padding:2px 8px;letter-spacing:.5px;text-transform:uppercase;}
+.tag-danger{background:rgba(248,81,73,.12);color:var(--danger);border:1px solid rgba(248,81,73,.25);}
+.tag-success{background:rgba(63,185,80,.1);color:var(--accent);border:1px solid rgba(63,185,80,.22);}
+.tag-warn{background:rgba(210,153,34,.12);color:var(--warn);border:1px solid rgba(210,153,34,.25);}
+.tag-muted{background:rgba(125,133,144,.08);color:var(--muted);border:1px solid var(--border);}
+.tag-blue{background:rgba(88,166,255,.1);color:var(--blue);border:1px solid rgba(88,166,255,.25);}
+.tag-purple{background:rgba(188,140,255,.1);color:var(--purple);border:1px solid rgba(188,140,255,.25);}
+
+/* ── Inputs ── */
+.input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;transition:border-color .15s;}
+.input:focus{border-color:var(--blue);}.input::placeholder{color:var(--muted);}
+select.input{cursor:pointer;}
+textarea.input{resize:vertical;min-height:64px;line-height:1.5;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;}
+.section-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:700;}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.card+.card{margin-top:10px;}
+
+/* ── Round class/student buttons ── */
+.round-grid{display:flex;flex-wrap:wrap;gap:14px;justify-content:flex-start;padding:4px 0;}
+.round-btn{
+  width:80px;height:80px;border-radius:50%;border:2px solid var(--border);
+  background:var(--card);cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;transition:all .2s;
+  font-family:inherit;color:var(--text);position:relative;
+  -webkit-tap-highlight-color:transparent;
+}
+.round-btn:active{transform:scale(.93);}
+.round-btn.rb-accent{border-color:var(--accent);background:rgba(63,185,80,.08);}
+.round-btn.rb-warn{border-color:var(--warn);background:rgba(210,153,34,.08);}
+.round-btn.rb-danger{border-color:var(--danger);background:rgba(248,81,73,.08);}
+.round-btn.rb-blue{border-color:var(--blue);background:rgba(88,166,255,.08);}
+.round-btn.rb-absent{border-color:var(--muted);background:rgba(125,133,144,.08);opacity:.7;}
+.round-btn.rb-selected{border-width:3px;}
+.round-initials{font-size:18px;font-weight:700;line-height:1;}
+.round-label{font-size:9px;font-weight:600;text-align:center;color:var(--muted);max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2;}
+.round-badge{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);}
+.round-badge-warn{background:var(--warn);}
+.round-badge-purple{background:var(--purple);}
+
+/* Class round btn bigger */
+.round-btn-lg{width:100px;height:100px;}
+.round-btn-lg .round-initials{font-size:22px;}
+.round-btn-lg .round-label{font-size:10px;max-width:90px;}
+
+/* ── Point buttons ── */
+.point-section{background:var(--surface);border-radius:12px;padding:14px;margin-bottom:10px;}
+.point-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.point-row:last-child{margin-bottom:0;}
+.point-type-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;width:90px;flex-shrink:0;}
+.pips{display:flex;gap:5px;align-items:center;}
+.pip{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:var(--border);transition:all .15s;}
+.pip-l{background:var(--blue);border-color:var(--blue);}
+.pip-p{background:var(--warn);border-color:var(--warn);}
+.point-btns{display:flex;gap:6px;align-items:center;}
+.pbtn{min-width:44px;min-height:44px;border-radius:50%;border:none;font-size:18px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;}
+.pbtn-plus{background:rgba(88,166,255,.15);color:var(--blue);}
+.pbtn-minus{background:rgba(248,81,73,.12);color:var(--danger);}
+.point-val{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;min-width:28px;text-align:center;}
+
+/* ── Violation buttons ── */
+.violation-row{display:flex;gap:8px;margin-top:10px;}
+.vbtn{flex:1;min-height:48px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;transition:all .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+.vbtn-warn{background:rgba(210,153,34,.15);color:var(--warn);border:1px solid rgba(210,153,34,.3);}
+.vbtn-conseq{background:rgba(248,81,73,.12);color:var(--danger);border:1px solid rgba(248,81,73,.25);}
+.vbtn-referral{background:rgba(188,140,255,.1);color:var(--purple);border:1px solid rgba(188,140,255,.25);}
+.vbtn-count{font-size:10px;opacity:.8;}
+.vbtn.vbtn-active{border-width:2px;transform:scale(.97);}
+
+/* ── Absent toggle ── */
+.absent-btn{min-width:44px;min-height:44px;border-radius:50%;border:2px solid var(--border);background:var(--surface);cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:inherit;}
+.absent-btn.absent-on{border-color:var(--muted);background:rgba(125,133,144,.15);color:var(--text);}
+
+/* ── Dropdown sheet ── */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:flex-end;justify-content:center;}
+.sheet{background:var(--card);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:20px;max-height:80vh;overflow-y:auto;}
+.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+.sheet-title{font-size:15px;font-weight:700;margin-bottom:14px;}
+.sheet-option{display:flex;align-items:center;padding:12px 14px;border-radius:10px;cursor:pointer;font-size:14px;gap:10px;transition:background .15s;}
+.sheet-option:hover{background:var(--surface);}
+.sheet-option-selected{background:rgba(63,185,80,.08);color:var(--accent);}
+.sheet-sep{height:1px;background:var(--border);margin:8px 0;}
+
+/* ── Date nav ── */
+.date-nav{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.date-nav-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px 10px;border-radius:6px;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;}
+.date-nav-btn:disabled{opacity:.3;cursor:not-allowed;}
+.date-label{font-size:13px;font-weight:600;text-align:center;}
+.date-today-btn{font-size:11px;color:var(--accent);background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:600;min-height:32px;}
+
+/* ── Notes ── */
+.note-item{background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px;position:relative;}
+.note-time{font-size:10px;color:var(--muted);margin-bottom:4px;font-family:'IBM Plex Mono',monospace;}
+.note-tag{display:inline-flex;margin-right:4px;}
+.note-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;}
+.note-act-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;}
+.note-act-btn:hover{color:var(--text);background:var(--border);}
+.note-edit-area{margin-top:6px;}
+.note-add-row{display:flex;gap:8px;align-items:flex-end;}
+.note-add-row textarea{flex:1;}
+
+/* ── Progress ── */
+.progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:2px;transition:width .3s;}
+
+/* ── History ── */
+.history-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;gap:8px;}
+.history-row:last-child{border-bottom:none;}
+.history-violations{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;}
+
+/* ── Follow-up page ── */
+.followup-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;position:relative;}
+.followup-item.resolved{opacity:.5;}
+.followup-item+.followup-item{margin-top:8px;}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;z-index:9999;white-space:nowrap;animation:toastin .2s ease;}
+@keyframes toastin{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:380px;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:10px;}
+.modal-desc{color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.5;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;}
+.import-area{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;}
+.import-area:hover{border-color:var(--accent);}
+
+/* ── Back nav ── */
+.back-nav{display:flex;align-items:center;margin-bottom:16px;}
+.empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:13px;}
+
+/* ── Reason list editor ── */
+.reason-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
+.reason-item:last-child{border-bottom:none;}
+.reason-item input{flex:1;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toasts"></div>
+<div id="sheet-container"></div>
+<input type="file" id="imp-file" accept=".json" style="display:none"/>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════
+var STORE_KEY = "scm_v4";
+
+function loadData() {
+  try { var r = localStorage.getItem(STORE_KEY); if (r) return JSON.parse(r); } catch(e) {}
+  return { classes:[], students:{}, records:{}, notes:{}, followups:[], classReasons:{} };
+}
+
+function saveData() {
+  // Ensure followups array exists
+  if (!app.data.followups) app.data.followups = [];
+  if (!app.data.classReasons) app.data.classReasons = {};
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(app.data)); } catch(e) {}
+  app.lastSave = new Date();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEFAULT REASONS
+// ═══════════════════════════════════════════════════════════════
+var DEFAULT_POINT_REASONS = [
+  "Talking during instruction",
+  "Not following directions",
+  "Off task / distracted",
+  "Using phone/device",
+  "Calling out without raising hand",
+  "Not participating in activity",
+  "Sleeping / disengaged",
+  "Other"
+];
+var DEFAULT_VIOLATION_REASONS = [
+  "Disrespectful language",
+  "Disrespecting classmates",
+  "Repeated rule-breaking",
+  "Refusal to follow directions",
+  "Aggressive behaviour",
+  "Harassment / bullying",
+  "Phone / device violation",
+  "Other"
+];
+
+function getClassReasons(cid) {
+  if (!app.data.classReasons) app.data.classReasons = {};
+  if (!app.data.classReasons[cid]) {
+    app.data.classReasons[cid] = {
+      points: DEFAULT_POINT_REASONS.slice(),
+      violations: DEFAULT_VIOLATION_REASONS.slice()
+    };
+  }
+  return app.data.classReasons[cid];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════
+var app = {
+  data: loadData(),
+  view: "home",
+  activeClass: null,
+  activeStudent: null,
+  viewDate: todayStr(),
+  showInactive: {},
+  lastSave: null,
+  confirmPending: null,
+  prefVal: "phone",
+  // Sheet state
+  sheet: null,  // { type, sid, field, cid, callback }
+  // Note editing
+  editingNoteIdx: null
+};
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function fmtDate(iso) { return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); }
+function fmtDateShort(iso) { return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
+function fmtTime(iso) { return new Date(iso).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}); }
+function offsetDate(d,n) { var dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); }
+function isToday(d) { return d===todayStr(); }
+
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function getInitials(name) {
+  var parts = String(name||"").trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return (parts[0]||"?").slice(0,2).toUpperCase();
+}
+
+function getClassStudents(cid) { return app.data.students[cid]||[]; }
+function getActiveStudents(cid) { return getClassStudents(cid).filter(function(s){ return s.active!==false; }); }
+function getInactiveStudents(cid) { return getClassStudents(cid).filter(function(s){ return s.active===false; }); }
+
+function findStudent(sid) {
+  var cids = Object.keys(app.data.students);
+  for (var i=0;i<cids.length;i++) {
+    var list = app.data.students[cids[i]];
+    for (var j=0;j<list.length;j++) { if (list[j].id===sid) return { s:list[j], cid:cids[i] }; }
+  }
+  return null;
+}
+
+function findClass(cid) {
+  for (var i=0;i<app.data.classes.length;i++) { if(app.data.classes[i].id===cid) return app.data.classes[i]; }
+  return null;
+}
+
+function getRecord(sid,date) {
+  if (!date) date=app.viewDate;
+  if (app.data.records[date] && app.data.records[date][sid]) return app.data.records[date][sid];
+  return {listen:2,participate:2,absent:false,violations:[]};
+}
+
+function setRecord(sid,updater,date) {
+  if (!date) date=app.viewDate;
+  if (!app.data.records[date]) app.data.records[date]={};
+  var cur = app.data.records[date][sid] || {listen:2,participate:2,absent:false,violations:[]};
+  if (!cur.violations) cur.violations=[];
+  app.data.records[date][sid] = updater(cur);
+  saveData();
+}
+
+function addNote(sid,text,type,date) {
+  if (!text||!text.trim()) return null;
+  if (!app.data.notes[sid]) app.data.notes[sid]=[];
+  var note = {
+    id: Date.now().toString() + Math.random().toString(36).slice(2),
+    text:text.trim(),
+    type:type||"note",
+    timestamp:new Date().toISOString(),
+    date:date||app.viewDate
+  };
+  app.data.notes[sid].push(note);
+  saveData();
+  return note;
+}
+
+function updateNote(sid,noteId,newText) {
+  var notes = app.data.notes[sid]||[];
+  for (var i=0;i<notes.length;i++) {
+    if (notes[i].id===noteId) { notes[i].text=newText.trim(); notes[i].edited=true; saveData(); return; }
+  }
+}
+
+function deleteNote(sid,noteId) {
+  if (!app.data.notes[sid]) return;
+  app.data.notes[sid] = app.data.notes[sid].filter(function(n){ return n.id!==noteId; });
+  saveData();
+}
+
+function addFollowup(sid,cid,type,reason,date) {
+  if (!app.data.followups) app.data.followups=[];
+  app.data.followups.push({
+    id: Date.now().toString()+Math.random().toString(36).slice(2),
+    sid:sid, cid:cid, type:type, reason:reason,
+    date:date||app.viewDate,
+    timestamp:new Date().toISOString(),
+    resolved:false
+  });
+  saveData();
+}
+
+function getStreak(sid) {
+  var days=Object.keys(app.data.records).sort(function(a,b){return b.localeCompare(a);});
+  var n=0;
+  for (var i=0;i<days.length;i++) {
+    var r=app.data.records[days[i]][sid];
+    if (r&&!r.absent&&r.listen===2&&r.participate===2) n++; else break;
+  }
+  return n;
+}
+
+function needsCallHome(sid) {
+  var days=Object.keys(app.data.records).sort(function(a,b){return b.localeCompare(a);}).slice(0,7);
+  var bad=0;
+  for (var i=0;i<days.length;i++) {
+    var r=app.data.records[days[i]][sid];
+    if (r&&!r.absent&&(r.listen<2||r.participate<2)) bad++;
+  }
+  return bad>=2;
+}
+
+function getTotalPoints(sid) {
+  var total=0,possible=0;
+  Object.values(app.data.records).forEach(function(day) {
+    var r=day[sid];
+    if (r&&!r.absent) { total+=(r.listen||0)+(r.participate||0); possible+=4; }
+  });
+  return {total:total,possible:possible,pct:possible?Math.round(total/possible*100):100};
+}
+
+function ptColor(pts) { return pts===4?"var(--accent)":pts>=2?"var(--warn)":"var(--danger)"; }
+function pctColor(pct) { return pct>=80?"var(--accent)":pct>=50?"var(--warn)":"var(--danger)"; }
+
+function getStudentColor(sid) {
+  var call=needsCallHome(sid);
+  var stk=getStreak(sid);
+  var r=getRecord(sid);
+  if (r.absent) return "rb-absent";
+  if (call) return "rb-danger";
+  var pts=(r.listen||0)+(r.participate||0);
+  if (pts<4) return "rb-warn";
+  if (stk>=20) return "rb-accent";
+  return "rb-blue";
+}
+
+function countPendingFollowups() {
+  if (!app.data.followups) return 0;
+  return app.data.followups.filter(function(f){ return !f.resolved; }).length;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════
+function showToast(msg) {
+  var c=document.getElementById("toasts");
+  var t=document.createElement("div"); t.className="toast"; t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },2500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIRM MODAL
+// ═══════════════════════════════════════════════════════════════
+function showConfirm(title,desc,fn) { app.confirmPending={title:title,desc:desc,fn:fn}; render(); }
+function cancelConfirm() { app.confirmPending=null; render(); }
+function runConfirm() { var fn=app.confirmPending?app.confirmPending.fn:null; app.confirmPending=null; render(); if(fn)fn(); }
+
+function buildConfirmModal() {
+  if (!app.confirmPending) return "";
+  return '<div class="overlay" onclick="cancelConfirm()"><div class="modal" onclick="event.stopPropagation()">' +
+    '<div class="modal-title">'+esc(app.confirmPending.title)+'</div>' +
+    '<div class="modal-desc">'+esc(app.confirmPending.desc)+'</div>' +
+    '<div class="modal-btns"><button class="btn btn-surface" onclick="cancelConfirm()">Cancel</button>' +
+    '<button class="btn btn-danger" onclick="runConfirm()">Confirm</button></div>' +
+    '</div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOTTOM SHEET (reason picker)
+// ═══════════════════════════════════════════════════════════════
+function openSheet(config) {
+  app.sheet = config;
+  renderSheet();
+}
+
+function closeSheet() {
+  app.sheet = null;
+  var sc = document.getElementById("sheet-container");
+  if (sc) sc.innerHTML = "";
+}
+
+function renderSheet() {
+  var sc = document.getElementById("sheet-container");
+  if (!sc || !app.sheet) return;
+  var cfg = app.sheet;
+
+  var reasons = [];
+  if (cfg.cid) {
+    var cr = getClassReasons(cfg.cid);
+    reasons = cfg.reasonType === "points" ? cr.points : cr.violations;
+  }
+
+  var html = '<div class="sheet-overlay" onclick="closeSheet()">' +
+    '<div class="sheet" onclick="event.stopPropagation()">' +
+    '<div class="sheet-handle"></div>' +
+    '<div class="sheet-title">' + esc(cfg.title) + '</div>';
+
+  for (var i=0;i<reasons.length;i++) {
+    html += '<div class="sheet-option" onclick="selectReason('+i+')">' +
+      '<span style="font-size:16px;">'+esc(reasons[i])+'</span>' +
+      '</div>';
+  }
+
+  html += '<div class="sheet-sep"></div>';
+  html += '<div class="sheet-option" onclick="selectReason(-1)" style="color:var(--muted);">No specific reason</div>';
+  html += '</div></div>';
+
+  sc.innerHTML = html;
+}
+
+function selectReason(idx) {
+  var cfg = app.sheet;
+  if (!cfg) return;
+  closeSheet();
+
+  var reasons = [];
+  if (cfg.cid) {
+    var cr = getClassReasons(cfg.cid);
+    reasons = cfg.reasonType === "points" ? cr.points : cr.violations;
+  }
+  var reason = idx >= 0 ? reasons[idx] : null;
+
+  if (cfg.callback) cfg.callback(reason);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function navigate(view, classId, studentId) {
+  app.view = view;
+  if (classId!=null) app.activeClass=classId;
+  if (studentId!=null) app.activeStudent=studentId;
+  if (view==="class"||view==="student") app.viewDate=todayStr();
+  app.editingNoteIdx=null;
+  render();
+}
+
+function navigateDate(delta) {
+  var next=offsetDate(app.viewDate,delta);
+  if (next>todayStr()) return;
+  app.viewDate=next;
+  render();
+}
+
+function jumpToToday() { app.viewDate=todayStr(); render(); }
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════
+function render() {
+  var html="";
+  if      (app.view==="home")        html=buildHome();
+  else if (app.view==="class")       html=buildClass();
+  else if (app.view==="student")     html=buildStudent();
+  else if (app.view==="addClass")    html=buildAddClass();
+  else if (app.view==="editClass")   html=buildEditClass();
+  else if (app.view==="addStudent")  html=buildAddStudent();
+  else if (app.view==="editStudent") html=buildEditStudent();
+  else if (app.view==="backup")      html=buildBackup();
+  else if (app.view==="followups")   html=buildFollowups();
+  else if (app.view==="classSettings") html=buildClassSettings();
+  else html=buildHome();
+
+  document.getElementById("app").innerHTML = html + buildConfirmModal();
+
+  var impFile=document.getElementById("imp-file");
+  if (impFile) {
+    impFile.onchange=function(e) {
+      var f=e.target.files[0]; if(f) importData(f); e.target.value="";
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HEADER
+// ═══════════════════════════════════════════════════════════════
+function buildHeader() {
+  var pending = countPendingFollowups();
+  var saveLabel = app.lastSave ? fmtTime(app.lastSave.toISOString()) : "Not yet saved";
+  return '<div class="header">' +
+    '<div class="col"><div class="logo">SCM<span class="logo-dot">&middot;</span>Tracker</div>' +
+    '<span class="txs cm">Saved '+saveLabel+'</span></div>' +
+    '<div class="header-actions">' +
+    (pending>0 ? '<button class="btn btn-sm" style="background:rgba(248,81,73,.12);color:var(--danger);border:1px solid rgba(248,81,73,.25);" onclick="navigate(\'followups\')">&#9888; '+pending+' Follow-Up'+(pending>1?'s':'')+'</button>' : '') +
+    '<button class="btn btn-ghost btn-sm" onclick="navigate(\'backup\')">&#8615;</button>' +
+    '</div></div>';
+}
+
+function buildDateNav() {
+  var isT=isToday(app.viewDate);
+  return '<div class="date-nav">' +
+    '<button class="date-nav-btn" onclick="navigateDate(-1)">&#8592;</button>' +
+    '<div class="col" style="align-items:center;flex:1;">' +
+      '<div class="date-label">'+(isT?"Today &mdash; ":"")+fmtDate(app.viewDate)+'</div>' +
+    '</div>' +
+    '<div class="row g8">' +
+    (!isT?'<button class="date-today-btn" onclick="jumpToToday()">Today</button>':'') +
+    '<button class="date-nav-btn" onclick="navigateDate(1)" '+(isT?'disabled':'')+'>&#8594;</button>' +
+    '</div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOME — round class buttons
+// ═══════════════════════════════════════════════════════════════
+function buildHome() {
+  var html = buildHeader();
+  html += '<div class="mb16 mt8">';
+  html += '<div class="rowb mb12"><span class="section-title">My Classes</span>';
+  html += '<button class="btn btn-accent btn-sm" onclick="navigate(\'addClass\')">+ Class</button></div>';
+
+  if (app.data.classes.length===0) {
+    html += '<div class="empty">No classes yet. Tap + Class to get started.</div>';
+  } else {
+    html += '<div class="round-grid">';
+    for (var i=0;i<app.data.classes.length;i++) {
+      var cls=app.data.classes[i];
+      var sts=getActiveStudents(cls.id);
+      var pending=countClassFollowups(cls.id);
+      var initials=(cls.symbol||cls.name.slice(0,2).toUpperCase());
+      html += '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">';
+      html += '<button class="round-btn round-btn-lg rb-blue" onclick="navigate(\'class\',\''+cls.id+'\')">';
+      if (pending>0) html += '<span class="round-badge round-badge-warn">'+pending+'</span>';
+      html += '<span class="round-initials" style="font-size:20px;">'+esc(initials)+'</span>';
+      html += '</button>';
+      html += '<span class="round-label cm">'+esc(cls.name)+'</span>';
+      if (cls.period) html += '<span class="txs cm">'+esc(cls.period)+'</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // Follow-up summary if any
+  var pending = countPendingFollowups();
+  if (pending>0) {
+    html += '<div class="card" style="border-color:rgba(248,81,73,.3);cursor:pointer;" onclick="navigate(\'followups\')">';
+    html += '<div class="rowb"><div>';
+    html += '<div class="fw7" style="color:var(--danger);">&#9888; '+pending+' Pending Follow-Up'+(pending>1?'s':'')+'</div>';
+    html += '<div class="cm tsm mt8">Call homes &amp; referrals awaiting action</div>';
+    html += '</div><span class="cm" style="font-size:18px;">&#8250;</span></div></div>';
+  }
+
+  return html;
+}
+
+function countClassFollowups(cid) {
+  if (!app.data.followups) return 0;
+  return app.data.followups.filter(function(f){ return f.cid===cid&&!f.resolved; }).length;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLASS VIEW — round student buttons
+// ═══════════════════════════════════════════════════════════════
+function buildClass() {
+  var cid=app.activeClass;
+  var cls=findClass(cid);
+  if (!cls) return buildHome();
+
+  var activeList=getActiveStudents(cid);
+  var inactiveList=getInactiveStudents(cid);
+  var showI=app.showInactive[cid];
+
+  var html='<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'home\')">&#8592;</button>';
+  html+='<span class="fw7" style="font-size:16px;">'+esc(cls.name)+'</span>';
+  if (cls.period) html+='<span class="cm tsm" style="margin-left:8px;">'+esc(cls.period)+'</span>';
+  html+='<div style="flex:1;"></div>';
+  html+='<button class="btn btn-ghost btn-sm" onclick="navigate(\'classSettings\',\''+cid+'\')">&#9881;</button>';
+  html+='<button class="btn btn-accent btn-sm" onclick="navigate(\'addStudent\',\''+cid+'\')">+</button>';
+  html+='</div>';
+
+  html+=buildDateNav();
+
+  if (activeList.length===0) {
+    html+='<div class="empty">No active students yet.</div>';
+  } else {
+    html+='<div class="round-grid mb16">';
+    for (var i=0;i<activeList.length;i++) {
+      html+=buildStudentRoundBtn(activeList[i],cid);
+    }
+    html+='</div>';
+  }
+
+  if (inactiveList.length>0) {
+    html+='<button class="btn btn-ghost btn-sm mb8" onclick="toggleInactive(\''+cid+'\')">'+
+      (showI?'&#9650; Hide':'&#9660; Show')+' inactive ('+inactiveList.length+')</button>';
+    if (showI) {
+      html+='<div class="round-grid mb16">';
+      for (var j=0;j<inactiveList.length;j++) html+=buildStudentRoundBtn(inactiveList[j],cid,true);
+      html+='</div>';
+    }
+  }
+
+  return html;
+}
+
+function buildStudentRoundBtn(s, cid, isInactive) {
+  var r=getRecord(s.id);
+  var colorCls=isInactive?"rb-absent":getStudentColor(s.id);
+  var pts=(r.listen||0)+(r.participate||0);
+  var call=needsCallHome(s.id);
+  var stk=getStreak(s.id);
+  var symbol=s.symbol||getInitials(s.name);
+  var violations=r.violations||[];
+
+  var html='<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">';
+  html+='<div style="position:relative;">';
+  html+='<button class="round-btn '+colorCls+(r.absent?' rb-absent':'')+'" onclick="navigate(\'student\',null,\''+s.id+'\')">'+esc(symbol)+'</button>';
+
+  // Absent toggle overlaid bottom-right
+  if (!isInactive) {
+    html+='<button class="absent-btn'+(r.absent?' absent-on':'')+'" style="position:absolute;bottom:-6px;right:-6px;width:26px;height:26px;font-size:9px;" onclick="event.stopPropagation();toggleAbsent(\''+s.id+'\')" title="'+(r.absent?'Mark present':'Mark absent')+'">'+
+      (r.absent?'ABS':'&#9679;')+'</button>';
+  }
+
+  // Badge
+  if (!isInactive&&!r.absent) {
+    if (call) html+='<span class="round-badge">!</span>';
+    else if (stk>=20) html+='<span class="round-badge" style="background:var(--accent);">&#11088;</span>';
+    else if (violations.length>0) html+='<span class="round-badge round-badge-warn">'+violations.length+'</span>';
+  }
+
+  html+='</div>';
+  html+='<span style="font-size:10px;font-weight:600;color:var(--muted);max-width:72px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(s.name.split(' ')[0])+'</span>';
+  if (!isInactive&&!r.absent) {
+    html+='<span style="font-size:10px;font-family:\'IBM Plex Mono\',monospace;color:'+ptColor(pts)+';">'+pts+'/4</span>';
+  }
+  if (r.absent) html+='<span class="txs cm">Absent</span>';
+  html+='</div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STUDENT DETAIL
+// ═══════════════════════════════════════════════════════════════
+function buildStudent() {
+  var sid=app.activeStudent;
+  var found=findStudent(sid);
+  if (!found) { app.view="class"; return buildClass(); }
+  var s=found.s, cid=found.cid;
+  var cls=findClass(cid);
+
+  var tp=getTotalPoints(sid);
+  var stk=getStreak(sid);
+  var call=needsCallHome(sid);
+  var r=getRecord(sid);
+  var isI=(s.active===false);
+  var pc=pctColor(tp.pct);
+  var violations=r.violations||[];
+
+  var allNotes=(app.data.notes[sid]||[]).slice().reverse();
+  var histDays=Object.keys(app.data.records)
+    .filter(function(d){ return app.data.records[d][sid]; })
+    .sort(function(a,b){ return b.localeCompare(a); }).slice(0,14);
+
+  var html='<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'class\',\''+cid+'\')">&#8592;</button>';
+  html+='<span class="fw7" style="font-size:16px;">'+esc(s.name)+'</span>';
+  html+='<div style="flex:1;"></div>';
+  html+='<button class="btn btn-ghost btn-sm" onclick="navigate(\'editStudent\',null,\''+sid+'\')">&#9998;</button>';
+  html+='</div>';
+
+  // Summary card
+  html+='<div class="card mb12">';
+  html+='<div class="rowb mb8"><div class="row g8 wrap">';
+  if (isI) html+='<span class="tag tag-muted">Inactive</span>';
+  if (call&&!isI) html+='<span class="tag tag-danger">&#128222; Call Home</span>';
+  if (stk>=20) html+='<span class="tag tag-success">&#11088; '+stk+'-Day Streak</span>';
+  if (r.absent) html+='<span class="tag tag-muted">Absent</span>';
+  html+='</div>';
+  html+='<div style="text-align:right;"><div class="mono fw7" style="font-size:24px;color:'+pc+';">'+tp.pct+'%</div>';
+  html+='<div class="txs cm">'+tp.total+'/'+tp.possible+'</div></div></div>';
+  html+='<div class="progress-bar"><div class="progress-fill" style="width:'+tp.pct+'%;background:'+pc+';"></div></div>';
+
+  // Contact
+  if (s.parentName) {
+    html+='<div style="background:var(--surface);border-radius:8px;padding:12px;margin-top:10px;">';
+    html+='<div class="section-title mb8">Parent / Guardian</div>';
+    html+='<div class="fw7 tsm mb6">'+esc(s.parentName)+'</div>';
+    if ((s.preferred==="phone"||s.preferred==="either")&&s.phone)
+      html+='<div class="tsm mb4"><a href="tel:'+esc(s.phone)+'" style="color:var(--blue);text-decoration:none;">&#128222; '+esc(s.phone)+'</a></div>';
+    if ((s.preferred==="email"||s.preferred==="either")&&s.email)
+      html+='<div class="tsm"><a href="mailto:'+esc(s.email)+'" style="color:var(--accent);text-decoration:none;">&#9993; '+esc(s.email)+'</a></div>';
+    html+='</div>';
+  }
+  html+='</div>';
+
+  // Date nav
+  html+=buildDateNav();
+
+  // Points + violations
+  if (!isI&&!r.absent) {
+    html+='<div class="point-section mb12">';
+    html+='<div class="section-title mb10">Points &mdash; '+fmtDateShort(app.viewDate)+'</div>';
+
+    // Listen row
+    html+='<div class="point-row">';
+    html+='<div class="point-type-label cb">Listen</div>';
+    html+='<div class="pips">';
+    html+='<div class="pip'+(r.listen>=1?' pip-l':'')+'"></div>';
+    html+='<div class="pip'+(r.listen>=2?' pip-l':'')+'"></div>';
+    html+='</div>';
+    html+='<div class="point-btns">';
+    html+='<button class="pbtn pbtn-plus" onclick="openPointSheet(\''+sid+'\',\'listen\',1,\''+cid+'\')">+</button>';
+    html+='<span class="point-val cb">'+r.listen+'/2</span>';
+    html+='<button class="pbtn pbtn-minus" onclick="openPointSheet(\''+sid+'\',\'listen\',-1,\''+cid+'\')">&#8722;</button>';
+    html+='</div></div>';
+
+    // Participate row
+    html+='<div class="point-row">';
+    html+='<div class="point-type-label cw">Participate</div>';
+    html+='<div class="pips">';
+    html+='<div class="pip'+(r.participate>=1?' pip-p':'')+'"></div>';
+    html+='<div class="pip'+(r.participate>=2?' pip-p':'')+'"></div>';
+    html+='</div>';
+    html+='<div class="point-btns">';
+    html+='<button class="pbtn pbtn-plus" onclick="openPointSheet(\''+sid+'\',\'participate\',1,\''+cid+'\')">+</button>';
+    html+='<span class="point-val cw">'+r.participate+'/2</span>';
+    html+='<button class="pbtn pbtn-minus" onclick="openPointSheet(\''+sid+'\',\'participate\',-1,\''+cid+'\')">&#8722;</button>';
+    html+='</div></div>';
+
+    // Violation buttons
+    var warnCount=violations.filter(function(v){return v.type==="warning";}).length;
+    var consCount=violations.filter(function(v){return v.type==="consequence";}).length;
+    var refCount=violations.filter(function(v){return v.type==="referral";}).length;
+
+    html+='<div class="violation-row">';
+    html+='<button class="vbtn vbtn-warn" onclick="openViolationSheet(\''+sid+'\',\'warning\',\''+cid+'\')">'+
+      '&#9888; Warning'+(warnCount>0?'<span class="vbtn-count">x'+warnCount+'</span>':'')+
+      '</button>';
+    html+='<button class="vbtn vbtn-conseq" onclick="openViolationSheet(\''+sid+'\',\'consequence\',\''+cid+'\')">'+
+      '&#9940; Consequence'+(consCount>0?'<span class="vbtn-count">x'+consCount+'</span>':'')+
+      '</button>';
+    html+='<button class="vbtn vbtn-referral" onclick="openViolationSheet(\''+sid+'\',\'referral\',\''+cid+'\')">'+
+      '&#128196; Referral'+(refCount>0?'<span class="vbtn-count">x'+refCount+'</span>':'')+
+      '</button>';
+    html+='</div>';
+
+    html+='</div>'; // point-section
+  }
+
+  if (r.absent) {
+    html+='<div class="card mb12" style="text-align:center;padding:20px;">';
+    html+='<div style="font-size:28px;margin-bottom:8px;">&#128100;</div>';
+    html+='<div class="fw7 cm">Marked Absent</div>';
+    html+='<div class="tsm cm mt8">Points not counted for this day</div>';
+    html+='<button class="btn btn-surface btn-sm mt12" onclick="toggleAbsent(\''+sid+'\');render()">Mark Present</button>';
+    html+='</div>';
+  }
+
+  // Notes
+  html+='<div class="card mb12">';
+  html+='<div class="section-title mb12">Notes</div>';
+  html+='<div class="note-add-area mb12" style="background:var(--surface);border-radius:8px;padding:10px;">';
+  html+='<div class="note-add-row">';
+  html+='<textarea class="input" id="note-input" placeholder="Type a note..." rows="2"></textarea>';
+  html+='<button class="btn btn-accent btn-sm" onclick="submitNote(\''+sid+'\')">Add</button>';
+  html+='</div></div>';
+
+  if (allNotes.length===0) {
+    html+='<div class="cm tsm">No notes yet.</div>';
+  } else {
+    html+='<div class="col g8" style="max-height:260px;overflow-y:auto;">';
+    for (var n=0;n<allNotes.length;n++) {
+      var note=allNotes[n];
+      html+=buildNoteItem(note,sid);
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+
+  // History
+  if (histDays.length>0) {
+    html+='<div class="card mb12"><div class="section-title mb10">History</div>';
+    for (var h=0;h<histDays.length;h++) {
+      var d=histDays[h];
+      var hr=app.data.records[d][sid];
+      var hpts=(hr.listen||0)+(hr.participate||0);
+      var hviol=hr.violations||[];
+      html+='<div class="history-row">';
+      html+='<div class="col g4"><span class="cm">'+fmtDateShort(d)+'</span>';
+      if (hr.absent) html+='<span class="txs cm">Absent</span>';
+      if (hviol.length>0) {
+        html+='<div class="history-violations">';
+        for (var v=0;v<hviol.length;v++) {
+          var vc=hviol[v].type==="warning"?"tag-warn":hviol[v].type==="consequence"?"tag-danger":"tag-purple";
+          html+='<span class="tag '+vc+'" style="font-size:9px;">'+hviol[v].type.slice(0,4).toUpperCase()+'</span>';
+        }
+        html+='</div>';
+      }
+      html+='</div>';
+      if (!hr.absent) {
+        html+='<div class="row g10">';
+        html+='<span class="cb txs">L:'+(hr.listen!==undefined?hr.listen:2)+'/2</span>';
+        html+='<span class="cw txs">P:'+(hr.participate!==undefined?hr.participate:2)+'/2</span>';
+        html+='<span class="mono fw7 txs" style="color:'+ptColor(hpts)+';">'+hpts+'/4</span>';
+        html+='</div>';
+      }
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+
+  // Actions
+  html+='<div class="row g8 wrap">';
+  html+='<button class="btn btn-surface btn-sm" onclick="toggleActive(\''+sid+'\',\''+cid+'\')">'+
+    (isI?'&#10003; Mark Active':'&#9675; Mark Inactive')+'</button>';
+  html+='</div>';
+
+  return html;
+}
+
+function buildNoteItem(note, sid) {
+  var typeColors={note:"",warning:"tag-warn",consequence:"tag-danger",referral:"tag-purple",points:"tag-blue"};
+  var tc=typeColors[note.type]||"";
+  var isEditing=(app.editingNoteIdx===note.id);
+
+  var html='<div class="note-item" id="note-'+note.id+'">';
+  html+='<div class="note-time">';
+  if (tc) html+='<span class="tag '+tc+' note-tag">'+esc(note.type)+'</span>';
+  html+=fmtDateShort(note.timestamp)+' &middot; '+fmtTime(note.timestamp);
+  if (note.date&&note.date!==todayStr()) html+=' &middot; re: '+fmtDateShort(note.date+'T12:00:00');
+  if (note.edited) html+=' &middot; <em>edited</em>';
+  html+='</div>';
+
+  if (isEditing) {
+    html+='<div class="note-edit-area">';
+    html+='<textarea class="input" id="note-edit-'+note.id+'" rows="3">'+esc(note.text)+'</textarea>';
+    html+='<div class="row g8 mt8">';
+    html+='<button class="btn btn-accent btn-sm" onclick="saveNoteEdit(\''+sid+'\',\''+note.id+'\')">Save</button>';
+    html+='<button class="btn btn-ghost btn-sm" onclick="cancelNoteEdit()">Cancel</button>';
+    html+='</div></div>';
+  } else {
+    html+='<div>'+esc(note.text)+'</div>';
+    html+='<div class="note-actions">';
+    html+='<button class="note-act-btn" onclick="startNoteEdit(\''+note.id+'\')">&#9998;</button>';
+    html+='<button class="note-act-btn" onclick="confirmDeleteNote(\''+sid+'\',\''+note.id+'\')">&#10005;</button>';
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADD / EDIT CLASS
+// ═══════════════════════════════════════════════════════════════
+function buildAddClass() {
+  return '<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'home\')">&#8592;</button>' +
+    '<span class="fw7 ml8">New Class</span></div>' +
+    '<div class="col g12">' +
+    '<div class="form-group"><label class="form-label">Class Name *</label><input class="input" id="f-name" placeholder="e.g. AP English"></div>' +
+    '<div class="form-group"><label class="form-label">Period / Block</label><input class="input" id="f-period" placeholder="e.g. Period 3"></div>' +
+    '<button class="btn btn-accent" onclick="doAddClass()">Create Class</button></div>';
+}
+
+function buildEditClass() {
+  var cid=app.activeClass;
+  var cls=findClass(cid);
+  if (!cls) return buildHome();
+  var activeList=getActiveStudents(cid);
+  var others=app.data.classes.filter(function(c){ return c.id!==cid; });
+
+  var html='<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'class\',\''+cid+'\')">&#8592;</button><span class="fw7">Edit Class</span></div>';
+  html+='<div class="col g12 mb20">';
+  html+='<div class="form-group"><label class="form-label">Class Name</label><input class="input" id="f-name" value="'+esc(cls.name)+'"></div>';
+  html+='<div class="form-group"><label class="form-label">Period / Block</label><input class="input" id="f-period" value="'+esc(cls.period||'')+'"></div>';
+  html+='<button class="btn btn-accent" onclick="doEditClass(\''+cid+'\')">Save</button></div>';
+
+  if (activeList.length>0) {
+    html+='<div class="card mb16"><div class="section-title mb12">Students</div><div id="edit-sl">';
+    for (var j=0;j<activeList.length;j++) {
+      var st=activeList[j];
+      html+='<div class="rowb" style="padding:9px 0;border-bottom:1px solid var(--border);" data-id="'+st.id+'">';
+      html+='<div class="row g8"><span class="drag-handle">&#8286;</span><span class="tsm">'+esc(st.name)+'</span></div>';
+      if (others.length>0) {
+        html+='<select class="input" style="width:auto;font-size:11px;padding:4px 8px;" onchange="moveStudent(\''+st.id+'\',\''+cid+'\',this.value);this.value=\'\'">';
+        html+='<option value="">Move to&hellip;</option>';
+        for (var k=0;k<others.length;k++) html+='<option value="'+others[k].id+'">'+esc(others[k].name)+'</option>';
+        html+='</select>';
+      }
+      html+='</div>';
+    }
+    html+='</div></div>';
+    setTimeout(function(){ initEditSortable("edit-sl",cid); },40);
+  }
+  html+='<button class="btn btn-danger btn-sm" onclick="confirmDeleteClass(\''+cid+'\')">&#128465; Delete Class</button>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLASS SETTINGS (reasons editor)
+// ═══════════════════════════════════════════════════════════════
+function buildClassSettings() {
+  var cid=app.activeClass;
+  var cls=findClass(cid);
+  if (!cls) return buildHome();
+  var cr=getClassReasons(cid);
+
+  var html='<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'class\',\''+cid+'\')">&#8592;</button><span class="fw7">Class Settings &mdash; '+esc(cls.name)+'</span></div>';
+
+  html+=buildReasonEditor("Points Reasons","pointReasons",cr.points,cid);
+  html+='<div style="height:16px;"></div>';
+  html+=buildReasonEditor("Violation Reasons","violReasons",cr.violations,cid);
+
+  html+='<div style="height:16px;"></div>';
+  html+='<div class="card">';
+  html+='<div class="section-title mb12">Edit Class Info</div>';
+  html+='<button class="btn btn-surface btn-sm" onclick="navigate(\'editClass\',\''+cid+'\')">&#9998; Edit Name &amp; Students</button>';
+  html+='</div>';
+
+  return html;
+}
+
+function buildReasonEditor(title, listId, reasons, cid) {
+  var isPoints=(listId==="pointReasons");
+  var html='<div class="card">';
+  html+='<div class="rowb mb12"><div class="section-title">'+esc(title)+'</div>';
+  html+='<button class="btn btn-accent btn-sm" onclick="addReason(\''+cid+'\','+isPoints+')">+ Add</button></div>';
+  html+='<div id="'+listId+'">';
+  for (var i=0;i<reasons.length;i++) {
+    html+='<div class="reason-item" data-idx="'+i+'">';
+    html+='<input class="input" style="font-size:12px;" value="'+esc(reasons[i])+'" onchange="updateReason(\''+cid+'\','+isPoints+','+i+',this.value)">';
+    html+='<button class="btn btn-ghost btn-sm" onclick="deleteReason(\''+cid+'\','+isPoints+','+i+')" style="color:var(--danger);padding:4px 8px;">&#10005;</button>';
+    html+='</div>';
+  }
+  if (reasons.length===0) html+='<div class="cm tsm">No reasons yet. Tap + Add.</div>';
+  html+='</div></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADD / EDIT STUDENT
+// ═══════════════════════════════════════════════════════════════
+function buildStudentForm(s) {
+  var pref=s?(s.preferred||"phone"):"phone";
+  app.prefVal=pref;
+  var html='<div class="col g12">';
+  html+='<div class="form-group"><label class="form-label">Student Name *</label><input class="input" id="f-name" value="'+(s?esc(s.name):'')+'"></div>';
+  html+='<div class="form-group"><label class="form-label">Button Symbol (default: initials)</label><input class="input" id="f-symbol" value="'+(s?esc(s.symbol||''):'')+'" placeholder="e.g. JD or &#127801;"></div>';
+  html+='<div style="border-top:1px solid var(--border);padding-top:12px;">';
+  html+='<div class="section-title mb12">Parent / Guardian</div>';
+  html+='<div class="col g10">';
+  html+='<div class="form-group"><label class="form-label">Parent Name</label><input class="input" id="f-parent" value="'+(s?esc(s.parentName||''):'')+'" placeholder="Guardian name"></div>';
+  html+='<div class="form-group"><label class="form-label">Phone</label><input class="input" id="f-phone" type="tel" value="'+(s?esc(s.phone||''):'')+'" placeholder="Phone number"></div>';
+  html+='<div class="form-group"><label class="form-label">Email</label><input class="input" id="f-email" type="email" value="'+(s?esc(s.email||''):'')+'" placeholder="Email address"></div>';
+  html+='<div class="form-group"><label class="form-label">Preferred</label><div class="row g8" id="pref-btns">';
+  var prefs=["phone","email","either"];
+  for (var i=0;i<prefs.length;i++) {
+    var m=prefs[i];
+    html+='<button class="btn btn-sm '+(pref===m?'btn-accent':'btn-surface')+'" onclick="setPref(\''+m+'\')" data-pref="'+m+'">'+(m.charAt(0).toUpperCase()+m.slice(1))+'</button>';
+  }
+  html+='</div></div></div></div></div>';
+  return html;
+}
+
+function buildAddStudent() {
+  return '<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'class\',\''+app.activeClass+'\')">&#8592;</button><span class="fw7">Add Student</span></div>' +
+    buildStudentForm(null) +
+    '<button class="btn btn-accent mt16" onclick="doAddStudent()">Add Student</button>';
+}
+
+function buildEditStudent() {
+  var sid=app.activeStudent;
+  var found=findStudent(sid);
+  if (!found) return buildHome();
+  var s=found.s, cid=found.cid;
+  return '<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'student\',null,\''+sid+'\')">&#8592;</button><span class="fw7">Edit &mdash; '+esc(s.name)+'</span></div>' +
+    buildStudentForm(s) +
+    '<button class="btn btn-accent mt16" onclick="doEditStudent(\''+sid+'\',\''+cid+'\')">Save Changes</button>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FOLLOW-UPS PAGE
+// ═══════════════════════════════════════════════════════════════
+function buildFollowups() {
+  if (!app.data.followups) app.data.followups=[];
+  var all=app.data.followups.slice().sort(function(a,b){ return b.timestamp.localeCompare(a.timestamp); });
+  var unresolved=all.filter(function(f){ return !f.resolved; });
+  var resolved=all.filter(function(f){ return f.resolved; });
+
+  var html='<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'home\')">&#8592;</button><span class="fw7">Follow-Ups</span></div>';
+
+  if (all.length===0) {
+    html+='<div class="empty">No follow-ups yet.<br>Call home &amp; referral actions will appear here.</div>';
+    return html;
+  }
+
+  if (unresolved.length>0) {
+    html+='<div class="section-title mb12">Pending ('+unresolved.length+')</div>';
+    for (var i=0;i<unresolved.length;i++) html+=buildFollowupItem(unresolved[i]);
+  }
+
+  if (resolved.length>0) {
+    html+='<div class="section-title mb12 mt16">Resolved ('+resolved.length+')</div>';
+    for (var j=0;j<resolved.length;j++) html+=buildFollowupItem(resolved[j]);
+  }
+
+  return html;
+}
+
+function buildFollowupItem(f) {
+  var found=findStudent(f.sid);
+  var sName=found?found.s.name:"Unknown Student";
+  var cls=findClass(f.cid);
+  var clsName=cls?cls.name:"Unknown Class";
+  var typeColor=f.type==="referral"?"tag-purple":"tag-danger";
+  var typeLabel=f.type==="referral"?"Referral":"Call Home";
+
+  var html='<div class="followup-item'+(f.resolved?' resolved':'')+'">';
+  html+='<div class="rowb mb8"><div class="row g8 wrap">';
+  html+='<span class="tag '+typeColor+'">'+typeLabel+'</span>';
+  html+='<span class="fw7 tsm">'+esc(sName)+'</span>';
+  html+='<span class="cm tsm">&middot; '+esc(clsName)+'</span>';
+  html+='</div>';
+  html+='<button class="btn btn-sm '+(f.resolved?'btn-surface':'btn-accent')+'" onclick="toggleFollowup(\''+f.id+'\')">';
+  html+=(f.resolved?'&#8635; Reopen':'&#10003; Done')+'</button>';
+  html+='</div>';
+  html+='<div class="tsm cm">'+fmtDate(f.date+'T12:00:00')+' &middot; '+fmtTime(f.timestamp)+'</div>';
+  if (f.reason) html+='<div class="tsm mt8">'+esc(f.reason)+'</div>';
+  html+='</div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BACKUP PAGE
+// ═══════════════════════════════════════════════════════════════
+function buildBackup() {
+  var ds=(JSON.stringify(app.data).length/1024).toFixed(1);
+  var sc=Object.values(app.data.students).reduce(function(a,b){ return a+b.length; },0);
+  var dc=Object.keys(app.data.records).length;
+
+  var html='<div class="back-nav"><button class="btn btn-ghost" onclick="navigate(\'home\')">&#8592;</button><span class="fw7">Backup &amp; Export</span></div>';
+  html+='<div class="card mb12"><div class="section-title mb12">Current Data</div><div class="col g8">';
+  html+='<div class="rowb tsm"><span class="cm">Classes</span><span class="fw7">'+app.data.classes.length+'</span></div>';
+  html+='<div class="rowb tsm"><span class="cm">Students</span><span class="fw7">'+sc+'</span></div>';
+  html+='<div class="rowb tsm"><span class="cm">Days tracked</span><span class="fw7">'+dc+'</span></div>';
+  html+='<div class="rowb tsm"><span class="cm">Size</span><span class="fw7 mono">'+ds+' KB</span></div>';
+  html+='</div></div>';
+  html+='<div class="card mb12"><div class="section-title mb12">Export to Excel</div>';
+  html+='<div class="cm tsm mb12">Daily grid, student summary &amp; notes sheets.</div>';
+  html+='<button class="btn btn-green w100" onclick="exportExcel()">&#128196; Download Excel (.xlsx)</button></div>';
+  html+='<div class="card mb12"><div class="section-title mb12">JSON Backup</div>';
+  html+='<button class="btn btn-export w100 mb8" onclick="exportJSON()">&#8595; Download Backup (.json)</button></div>';
+  html+='<div class="card mb20"><div class="section-title mb12">Import Backup</div>';
+  html+='<div class="cm tsm mb12"><strong style="color:var(--warn);">Replaces all current data.</strong></div>';
+  html+='<div class="import-area" onclick="document.getElementById(\'imp-file\').click()">&#128193; Tap to select .json file</div></div>';
+  html+='<div class="card" style="border-color:rgba(248,81,73,.2);"><div class="section-title mb12 cd">Danger Zone</div>';
+  html+='<button class="btn btn-danger btn-sm" onclick="confirmClearAll()">&#128465; Clear All Data</button></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POINT & VIOLATION SHEETS
+// ═══════════════════════════════════════════════════════════════
+function openPointSheet(sid, field, delta, cid) {
+  var r=getRecord(sid);
+  var cur=r[field]||0;
+  var next=Math.max(0,Math.min(2,cur+delta));
+  if (next===cur) return; // no change
+
+  if (delta<0) {
+    // Lost a point — ask for reason
+    openSheet({
+      title: "Why did they lose a "+field+" point?",
+      cid: cid,
+      reasonType: "points",
+      callback: function(reason) {
+        setRecord(sid, function(r2) {
+          r2[field]=next; return r2;
+        });
+        var noteText=(field==="listen"?"Listen":"Participate")+" point lost"+(reason?": "+reason:"");
+        addNote(sid,noteText,"points",app.viewDate);
+        render();
+      }
+    });
+  } else {
+    // Gained a point — no reason needed
+    setRecord(sid,function(r2){ r2[field]=next; return r2; });
+    render();
+  }
+}
+
+function openViolationSheet(sid, type, cid) {
+  var titles={warning:"Reason for Warning",consequence:"Reason for Consequence",referral:"Reason for Referral"};
+  openSheet({
+    title: titles[type]||"Select Reason",
+    cid: cid,
+    reasonType: "violations",
+    callback: function(reason) {
+      // Log violation on record
+      setRecord(sid,function(r) {
+        if (!r.violations) r.violations=[];
+        r.violations.push({type:type,reason:reason||"",timestamp:new Date().toISOString()});
+        return r;
+      });
+      // Auto-log note
+      var typeLabel=type.charAt(0).toUpperCase()+type.slice(1);
+      var noteText=typeLabel+(reason?": "+reason:"");
+      addNote(sid,noteText,type,app.viewDate);
+      // Add follow-up for referral
+      if (type==="referral") {
+        addFollowup(sid,cid,"referral",reason||"No reason specified",app.viewDate);
+        showToast("Referral added to follow-ups");
+      }
+      render();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACTION HANDLERS
+// ═══════════════════════════════════════════════════════════════
+function toggleAbsent(sid) {
+  var r=getRecord(sid);
+  setRecord(sid,function(r2){ r2.absent=!r2.absent; return r2; });
+  render();
+}
+
+function toggleInactive(cid) { app.showInactive[cid]=!app.showInactive[cid]; render(); }
+
+function toggleActive(sid,cid) {
+  var list=app.data.students[cid]||[];
+  for (var i=0;i<list.length;i++) {
+    if (list[i].id===sid) {
+      list[i].active=(list[i].active===false)?true:false;
+      saveData();
+      showToast(list[i].active?"Marked active":"Marked inactive");
+      navigate("student",null,sid);
+      return;
+    }
+  }
+}
+
+function toggleFollowup(fid) {
+  var f=null;
+  for (var i=0;i<app.data.followups.length;i++) {
+    if (app.data.followups[i].id===fid) { f=app.data.followups[i]; break; }
+  }
+  if (f) { f.resolved=!f.resolved; saveData(); render(); }
+}
+
+function setPref(val) {
+  app.prefVal=val;
+  var btns=document.querySelectorAll("[data-pref]");
+  for (var i=0;i<btns.length;i++) {
+    btns[i].className="btn btn-sm "+(btns[i].getAttribute("data-pref")===val?"btn-accent":"btn-surface");
+  }
+}
+
+function submitNote(sid) {
+  var el=document.getElementById("note-input");
+  if (!el||!el.value.trim()) { showToast("Note is empty"); return; }
+  addNote(sid,el.value,"note",app.viewDate);
+  showToast("Note added");
+  render();
+}
+
+function startNoteEdit(noteId) { app.editingNoteIdx=noteId; render(); }
+function cancelNoteEdit() { app.editingNoteIdx=null; render(); }
+
+function saveNoteEdit(sid,noteId) {
+  var el=document.getElementById("note-edit-"+noteId);
+  if (!el||!el.value.trim()) { showToast("Note cannot be empty"); return; }
+  updateNote(sid,noteId,el.value);
+  app.editingNoteIdx=null;
+  showToast("Note updated");
+  render();
+}
+
+function confirmDeleteNote(sid,noteId) {
+  showConfirm("Delete note?","This note will be permanently removed.",function(){
+    deleteNote(sid,noteId); render();
+  });
+}
+
+function addReason(cid,isPoints) {
+  var cr=getClassReasons(cid);
+  var list=isPoints?cr.points:cr.violations;
+  list.push("New reason");
+  saveData(); render();
+}
+
+function updateReason(cid,isPoints,idx,val) {
+  var cr=getClassReasons(cid);
+  var list=isPoints?cr.points:cr.violations;
+  if (idx>=0&&idx<list.length) { list[idx]=val; saveData(); }
+}
+
+function deleteReason(cid,isPoints,idx) {
+  var cr=getClassReasons(cid);
+  var list=isPoints?cr.points:cr.violations;
+  list.splice(idx,1);
+  saveData(); render();
+}
+
+function doAddClass() {
+  var nameEl=document.getElementById("f-name");
+  var periodEl=document.getElementById("f-period");
+  var name=nameEl?nameEl.value.trim():"";
+  if (!name) { showToast("Class name is required"); return; }
+  var id=Date.now().toString();
+  app.data.classes.push({id:id,name:name,period:periodEl?periodEl.value.trim():""});
+  saveData(); navigate("class",id);
+}
+
+function doEditClass(cid) {
+  var nameEl=document.getElementById("f-name");
+  var periodEl=document.getElementById("f-period");
+  var name=nameEl?nameEl.value.trim():"";
+  if (!name) { showToast("Class name is required"); return; }
+  var cls=findClass(cid);
+  if (cls) { cls.name=name; cls.period=periodEl?periodEl.value.trim():""; }
+  saveData(); showToast("Saved"); navigate("class",cid);
+}
+
+function confirmDeleteClass(cid) {
+  var cls=findClass(cid);
+  showConfirm('Delete "'+esc(cls?cls.name:"")+'\"?',"Removes class and all student data permanently.",function(){
+    app.data.classes=app.data.classes.filter(function(c){ return c.id!==cid; });
+    delete app.data.students[cid];
+    saveData(); navigate("home");
+  });
+}
+
+function moveStudent(sid,fromCid,toCid) {
+  if (!toCid) return;
+  var list=app.data.students[fromCid]||[];
+  var moved=null,newList=[];
+  for (var i=0;i<list.length;i++) { if(list[i].id===sid) moved=list[i]; else newList.push(list[i]); }
+  if (!moved) return;
+  app.data.students[fromCid]=newList;
+  if (!app.data.students[toCid]) app.data.students[toCid]=[];
+  app.data.students[toCid].push(moved);
+  saveData();
+  var dest=findClass(toCid);
+  showToast("Moved to "+(dest?dest.name:toCid));
+  render();
+}
+
+function doAddStudent() {
+  var nameEl=document.getElementById("f-name");
+  var name=nameEl?nameEl.value.trim():"";
+  if (!name) { showToast("Student name is required"); return; }
+  var id=Date.now().toString();
+  var student={
+    id:id,name:name,active:true,
+    symbol:(document.getElementById("f-symbol")||{value:""}).value.trim()||"",
+    parentName:(document.getElementById("f-parent")||{value:""}).value.trim(),
+    phone:(document.getElementById("f-phone")||{value:""}).value.trim(),
+    email:(document.getElementById("f-email")||{value:""}).value.trim(),
+    preferred:app.prefVal||"phone"
+  };
+  if (!app.data.students[app.activeClass]) app.data.students[app.activeClass]=[];
+  app.data.students[app.activeClass].push(student);
+  saveData(); showToast(name+" added"); navigate("class",app.activeClass);
+}
+
+function doEditStudent(sid,cid) {
+  var nameEl=document.getElementById("f-name");
+  var name=nameEl?nameEl.value.trim():"";
+  if (!name) { showToast("Student name is required"); return; }
+  var list=app.data.students[cid]||[];
+  for (var i=0;i<list.length;i++) {
+    if (list[i].id===sid) {
+      list[i].name=name;
+      list[i].symbol=(document.getElementById("f-symbol")||{value:""}).value.trim()||"";
+      list[i].parentName=(document.getElementById("f-parent")||{value:""}).value.trim();
+      list[i].phone=(document.getElementById("f-phone")||{value:""}).value.trim();
+      list[i].email=(document.getElementById("f-email")||{value:""}).value.trim();
+      list[i].preferred=app.prefVal||list[i].preferred;
+      break;
+    }
+  }
+  saveData(); showToast("Saved"); navigate("student",null,sid);
+}
+
+function confirmClearAll() {
+  showConfirm("Clear all data?","Permanently erases everything. Export a backup first.",function(){
+    app.data={classes:[],students:{},records:{},notes:{},followups:[],classReasons:{}};
+    saveData(); showToast("All data cleared"); navigate("home");
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXCEL EXPORT
+// ═══════════════════════════════════════════════════════════════
+function exportExcel() {
+  if (typeof XLSX==="undefined") { showToast("Excel library not loaded"); return; }
+  var wb=XLSX.utils.book_new();
+  var allDates=Object.keys(app.data.records).sort();
+
+  // Sheet per class
+  for (var ci=0;ci<app.data.classes.length;ci++) {
+    var cls=app.data.classes[ci];
+    var students=getActiveStudents(cls.id).concat(getInactiveStudents(cls.id));
+    var header=["Student"].concat(allDates);
+    var rows=[header];
+    for (var si=0;si<students.length;si++) {
+      var s=students[si];
+      var row=[s.name];
+      for (var di=0;di<allDates.length;di++) {
+        var d=allDates[di];
+        var rec=app.data.records[d]?app.data.records[d][s.id]:null;
+        if (rec&&rec.absent) row.push("ABS");
+        else if (rec) row.push((rec.listen||0)+(rec.participate||0));
+        else row.push("");
+      }
+      rows.push(row);
+    }
+    var ws=XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"]=[{wch:22}].concat(allDates.map(function(){ return {wch:11}; }));
+    XLSX.utils.book_append_sheet(wb,ws,cls.name.slice(0,28).replace(/[\\/*?[\]]/g,"_"));
+  }
+
+  // Summary sheet
+  var sumRows=[["Class","Student","Status","Total","Possible","Pct","Days","Streak","Call Home","Warnings","Consequences","Referrals","Parent","Contact","Phone","Email"]];
+  for (var ci2=0;ci2<app.data.classes.length;ci2++) {
+    var cls2=app.data.classes[ci2];
+    var all2=getActiveStudents(cls2.id).concat(getInactiveStudents(cls2.id));
+    for (var si2=0;si2<all2.length;si2++) {
+      var stu=all2[si2];
+      var tp=getTotalPoints(stu.id);
+      var days=Object.keys(app.data.records).filter(function(d){ return app.data.records[d][stu.id]; }).length;
+      var warns=0,cons=0,refs=0;
+      Object.values(app.data.records).forEach(function(day){
+        var r=day[stu.id]; if(!r||!r.violations) return;
+        r.violations.forEach(function(v){
+          if(v.type==="warning")warns++;
+          else if(v.type==="consequence")cons++;
+          else if(v.type==="referral")refs++;
+        });
+      });
+      sumRows.push([cls2.name,stu.name,stu.active===false?"Inactive":"Active",tp.total,tp.possible,tp.pct+"%",days,getStreak(stu.id),needsCallHome(stu.id)?"YES":"",warns,cons,refs,stu.parentName||"",stu.preferred||"",stu.phone||"",stu.email||""]);
+    }
+  }
+  var wsSumm=XLSX.utils.aoa_to_sheet(sumRows);
+  wsSumm["!cols"]=[{wch:20},{wch:20},{wch:10},{wch:8},{wch:8},{wch:6},{wch:8},{wch:8},{wch:10},{wch:8},{wch:12},{wch:8},{wch:20},{wch:10},{wch:16},{wch:28}];
+  XLSX.utils.book_append_sheet(wb,wsSumm,"Summary");
+
+  // Notes sheet
+  var noteRows=[["Class","Student","Date","Time","Type","Note"]];
+  for (var ci3=0;ci3<app.data.classes.length;ci3++) {
+    var cls3=app.data.classes[ci3];
+    var all3=getActiveStudents(cls3.id).concat(getInactiveStudents(cls3.id));
+    for (var si3=0;si3<all3.length;si3++) {
+      var stu3=all3[si3];
+      var notes=app.data.notes[stu3.id]||[];
+      for (var ni=0;ni<notes.length;ni++) {
+        var note=notes[ni];
+        var nd=new Date(note.timestamp);
+        noteRows.push([cls3.name,stu3.name,nd.toLocaleDateString("en-US"),nd.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}),note.type||"note",note.text]);
+      }
+    }
+  }
+  var wsNotes=XLSX.utils.aoa_to_sheet(noteRows);
+  wsNotes["!cols"]=[{wch:20},{wch:20},{wch:14},{wch:12},{wch:14},{wch:60}];
+  XLSX.utils.book_append_sheet(wb,wsNotes,"Notes");
+
+  // Follow-ups sheet
+  var fuRows=[["Class","Student","Type","Date","Reason","Resolved"]];
+  if (app.data.followups) {
+    for (var fi=0;fi<app.data.followups.length;fi++) {
+      var f=app.data.followups[fi];
+      var fs=findStudent(f.sid);
+      var fc=findClass(f.cid);
+      fuRows.push([fc?fc.name:"",fs?fs.s.name:"",f.type,fmtDate(f.date+"T12:00:00"),f.reason||"",f.resolved?"Yes":"No"]);
+    }
+  }
+  var wsFu=XLSX.utils.aoa_to_sheet(fuRows);
+  wsFu["!cols"]=[{wch:20},{wch:20},{wch:12},{wch:16},{wch:40},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,wsFu,"Follow-Ups");
+
+  XLSX.writeFile(wb,"scm-export-"+new Date().toISOString().slice(0,10)+".xlsx");
+  showToast("Excel downloaded");
+}
+
+function exportJSON() {
+  var blob=new Blob([JSON.stringify(app.data,null,2)],{type:"application/json"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url; a.download="scm-backup-"+new Date().toISOString().slice(0,10)+".json";
+  a.click(); URL.revokeObjectURL(url);
+  showToast("Backup downloaded");
+}
+
+function importData(file) {
+  var reader=new FileReader();
+  reader.onload=function(e) {
+    try {
+      var parsed=JSON.parse(e.target.result);
+      if (!parsed.classes||!parsed.students) throw new Error("Invalid");
+      if (!parsed.followups) parsed.followups=[];
+      if (!parsed.classReasons) parsed.classReasons={};
+      app.data=parsed; saveData(); showToast("Data imported"); navigate("home");
+    } catch(err) { showToast("Invalid backup file"); }
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SORTABLE
+// ═══════════════════════════════════════════════════════════════
+function initEditSortable(elId,cid) {
+  var el=document.getElementById(elId);
+  if (!el||el._si) return; el._si=true;
+  Sortable.create(el,{
+    handle:".drag-handle",animation:150,ghostClass:"sortable-ghost",
+    onEnd:function(evt) {
+      var active=getActiveStudents(cid);
+      var inactive=getInactiveStudents(cid);
+      var moved=active.splice(evt.oldIndex,1)[0];
+      active.splice(evt.newIndex,0,moved);
+      app.data.students[cid]=active.concat(inactive);
+      saveData();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
